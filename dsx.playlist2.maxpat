@@ -2,42 +2,19 @@
 	"patcher" : 	{
 		"fileversion" : 1,
 		"appversion" : 		{
-			"major" : 8,
-			"minor" : 5,
+			"major" : 9,
+			"minor" : 0,
 			"revision" : 3,
 			"architecture" : "x64",
 			"modernui" : 1
 		}
 ,
 		"classnamespace" : "box",
-		"rect" : [ 122.0, 232.0, 1774.0, 1006.0 ],
-		"bglocked" : 0,
+		"rect" : [ 122.0, 232.0, 2052.0, 1175.0 ],
 		"openinpresentation" : 1,
 		"default_fontsize" : 10.0,
-		"default_fontface" : 0,
 		"default_fontname" : "Geneva",
-		"gridonopen" : 1,
 		"gridsize" : [ 15.0, 15.0 ],
-		"gridsnaponopen" : 1,
-		"objectsnaponopen" : 1,
-		"statusbarvisible" : 2,
-		"toolbarvisible" : 1,
-		"lefttoolbarpinned" : 0,
-		"toptoolbarpinned" : 0,
-		"righttoolbarpinned" : 0,
-		"bottomtoolbarpinned" : 0,
-		"toolbars_unpinned_last_save" : 0,
-		"tallnewobj" : 0,
-		"boxanimatetime" : 200,
-		"enablehscroll" : 1,
-		"enablevscroll" : 1,
-		"devicewidth" : 0.0,
-		"description" : "",
-		"digest" : "",
-		"tags" : "",
-		"style" : "",
-		"subpatcher_template" : "",
-		"assistshowspatchername" : 0,
 		"boxes" : [ 			{
 				"box" : 				{
 					"id" : "obj-3",
@@ -76,9 +53,9 @@
 					"numoutlets" : 2,
 					"outlettype" : [ "", "bang" ],
 					"parameter_enable" : 0,
-					"patching_rect" : [ 925.0, 6.950072999999975, 62.0, 25.0 ],
+					"patching_rect" : [ 925.0, 6.950072999999975, 62.0, 22.0 ],
 					"presentation" : 1,
-					"presentation_rect" : [ 101.0, 27.0, 34.0, 25.0 ],
+					"presentation_rect" : [ 101.0, 27.0, 34.0, 22.0 ],
 					"style" : "dsx.integer",
 					"textcolor" : [ 0.901960784313726, 0.901960784313726, 0.901960784313726, 1.0 ],
 					"tricolor" : [ 0.901960784313726, 0.901960784313726, 0.901960784313726, 1.0 ],
@@ -94,7 +71,7 @@
 					"numinlets" : 1,
 					"numoutlets" : 1,
 					"outlettype" : [ "" ],
-					"patching_rect" : [ 1528.5, 788.0, 115.0, 21.0 ],
+					"patching_rect" : [ 1789.0, 349.0, 115.0, 21.0 ],
 					"saved_object_attributes" : 					{
 						"filename" : "dsx_playlist_osc.js",
 						"parameter_enable" : 0
@@ -113,7 +90,7 @@
 					"numinlets" : 1,
 					"numoutlets" : 1,
 					"outlettype" : [ "" ],
-					"patching_rect" : [ 1564.0, 749.65002400000003, 80.0, 20.0 ],
+					"patching_rect" : [ 1825.0, 310.0, 80.0, 18.0 ],
 					"text" : "prepend oscin"
 				}
 
@@ -127,7 +104,7 @@
 					"numinlets" : 1,
 					"numoutlets" : 2,
 					"outlettype" : [ "", "FullPacket" ],
-					"patching_rect" : [ 1564.0, 719.65002400000003, 64.0, 20.0 ],
+					"patching_rect" : [ 1825.0, 280.0, 64.0, 18.0 ],
 					"text" : "o.route /"
 				}
 
@@ -141,7 +118,7 @@
 					"numinlets" : 0,
 					"numoutlets" : 1,
 					"outlettype" : [ "" ],
-					"patching_rect" : [ 1631.0, 678.15002400000003, 38.0, 20.0 ],
+					"patching_rect" : [ 1892.0, 239.0, 38.0, 18.0 ],
 					"text" : "r osc"
 				}
 
@@ -155,7 +132,7 @@
 					"numinlets" : 2,
 					"numoutlets" : 1,
 					"outlettype" : [ "" ],
-					"patching_rect" : [ 1539.0, 516.0, 52.0, 20.0 ],
+					"patching_rect" : [ 1800.0, 77.0, 52.0, 18.0 ],
 					"text" : "pipe 100"
 				}
 
@@ -169,7 +146,7 @@
 					"numinlets" : 1,
 					"numoutlets" : 1,
 					"outlettype" : [ "" ],
-					"patching_rect" : [ 1600.0, 573.0, 96.0, 20.0 ],
+					"patching_rect" : [ 1861.0, 134.0, 96.0, 18.0 ],
 					"text" : "prepend category"
 				}
 
@@ -183,7 +160,7 @@
 					"numinlets" : 1,
 					"numoutlets" : 2,
 					"outlettype" : [ "", "CONTROL" ],
-					"patching_rect" : [ 1539.0, 545.0, 69.0, 20.0 ],
+					"patching_rect" : [ 1800.0, 106.0, 71.0, 18.0 ],
 					"text" : "t s CONTROL"
 				}
 
@@ -197,7 +174,7 @@
 					"numinlets" : 1,
 					"numoutlets" : 1,
 					"outlettype" : [ "" ],
-					"patching_rect" : [ 1539.0, 486.0, 85.0, 20.0 ],
+					"patching_rect" : [ 1800.0, 47.0, 85.0, 18.0 ],
 					"text" : "loadmess getid"
 				}
 
@@ -211,7 +188,7 @@
 					"numinlets" : 1,
 					"numoutlets" : 3,
 					"outlettype" : [ "", "", "" ],
-					"patching_rect" : [ 1539.0, 610.0, 69.0, 20.0 ],
+					"patching_rect" : [ 1800.0, 171.0, 69.0, 18.0 ],
 					"saved_object_attributes" : 					{
 						"filename" : "getid.js",
 						"parameter_enable" : 0
@@ -399,7 +376,7 @@
 					"numinlets" : 1,
 					"numoutlets" : 1,
 					"outlettype" : [ "bang" ],
-					"patching_rect" : [ 1073.964232999999695, 55.81957999999986, 54.0, 20.0 ],
+					"patching_rect" : [ 1073.964232999999695, 55.81957999999986, 54.0, 18.0 ],
 					"text" : "loadbang"
 				}
 
@@ -554,7 +531,7 @@
 					"numinlets" : 2,
 					"numoutlets" : 1,
 					"outlettype" : [ "" ],
-					"patching_rect" : [ 1073.964232999999695, 90.0, 366.0, 19.0 ],
+					"patching_rect" : [ 1073.964232999999695, 90.0, 366.0, 20.0 ],
 					"text" : "col 0 width 20, col 1 width 138, col 2 width 60, col 3 width 80, col 4 width 100"
 				}
 
@@ -568,9 +545,9 @@
 					"maxclass" : "comment",
 					"numinlets" : 1,
 					"numoutlets" : 0,
-					"patching_rect" : [ 1448.0, 674.54333500000007, 71.0, 18.0 ],
+					"patching_rect" : [ 1709.0, 235.0, 71.0, 16.0 ],
 					"presentation" : 1,
-					"presentation_rect" : [ 1.0, 1.0, 417.0, 18.0 ],
+					"presentation_rect" : [ 1.0, 1.0, 417.0, 16.0 ],
 					"text" : "CONTROL2",
 					"textcolor" : [ 0.996078431372549, 0.996078431372549, 0.996078431372549, 1.0 ]
 				}
@@ -639,7 +616,7 @@
 				"box" : 				{
 					"comment" : "toPattStorage",
 					"id" : "obj-1",
-					"index" : 1,
+					"index" : 0,
 					"maxclass" : "outlet",
 					"numinlets" : 1,
 					"numoutlets" : 0,
@@ -939,7 +916,7 @@
 , 			{
 				"patchline" : 				{
 					"destination" : [ "obj-75", 0 ],
-					"midpoints" : [ 1609.5, 601.5, 1548.5, 601.5 ],
+					"midpoints" : [ 1870.5, 161.95666499999993, 1809.5, 161.95666499999993 ],
 					"source" : [ "obj-95", 0 ]
 				}
 
@@ -966,6 +943,41 @@
 
 			}
  ],
+		"originid" : "pat-1112",
+		"dependency_cache" : [ 			{
+				"name" : "dsx_playlist.js",
+				"bootpath" : "~/Nextcloud/dsx.package/tools",
+				"patcherrelativepath" : ".",
+				"type" : "TEXT",
+				"implicit" : 1
+			}
+, 			{
+				"name" : "dsx_playlist_osc.js",
+				"bootpath" : "~/Nextcloud/dsx.package/tools",
+				"patcherrelativepath" : ".",
+				"type" : "TEXT",
+				"implicit" : 1
+			}
+, 			{
+				"name" : "getid.js",
+				"bootpath" : "~/Nextcloud/dsx.package/_js",
+				"patcherrelativepath" : "../_js",
+				"type" : "TEXT",
+				"implicit" : 1
+			}
+, 			{
+				"name" : "o.route.mxo",
+				"type" : "iLaX"
+			}
+, 			{
+				"name" : "scalingfunctions.js",
+				"bootpath" : "~/Nextcloud/dsx.package/_js",
+				"patcherrelativepath" : "../_js",
+				"type" : "TEXT",
+				"implicit" : 1
+			}
+ ],
+		"autosave" : 0,
 		"styles" : [ 			{
 				"name" : "AudioStatus_Menu",
 				"default" : 				{
