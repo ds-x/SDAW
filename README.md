@@ -8,10 +8,15 @@ Additionally every modules can be adressed from outside via OpenSoundControl (OS
 
 This makes it possible to changes and adapt scenes dynamically with the OSC Sequencer Software VIZR or Chataigne.
 
-### dsx.text
+### DEV Folder
+the folder contains modules still in development. the main goal is to find different approaches to draw particle points. 
+we explored the field of RayMarching and Raytracing and also the geoemetry shader as drawing concept.
+all ideas have different advantages and disadadvantages.
+
+### dsx.text2
 - a custom build module to display Headlines and other one line text 
 
-### dsx.textlines
+### dsx.text
 - a custom build module to display lines of text (read from a simple text file) like subititles, descriptions of data or dialogs. the content displayed is prepared in a .txt file, where every line can be adressed inside the module.
 
 ### dsx.cvs
@@ -28,11 +33,17 @@ This makes it possible to changes and adapt scenes dynamically with the OSC Sequ
 ### dsx.movie
 - a custom module that display a movie in 3D space.
 
+### dsx.pointcloud
+- a custom module that can load .PLY pointcloud files
+
 ### dsx.partmodel
 - a custom module that takes the output of dsx.model and creates a cloud of particles from it.
 
 ### dsx.playlist
 - a custom module that can be used to create scenes for projects. because all parameters in modules we created are adressable, we can store, change and modulate them in scenes. each scene can have custom transition time and, for automatic playback, specific timepoints. 
+
+### dsx.sprite
+- a custom module that takes the output of dsx.partmodel and connects a custom 3D file to vertex
 
 ### dsx.texture
 - a custom module that is used to store and change textures, together with a normal and  height map. thes can be used as material input to dsx.model or dsx.models.   
