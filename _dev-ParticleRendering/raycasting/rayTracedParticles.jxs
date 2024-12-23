@@ -1,0 +1,226 @@
+<jittershader name="fill-flat-quads">
+	<description>Default Shader </description>
+	<param name="MV" type="mat4" state="MODELVIEW_MATRIX" />
+	<param name="P" type="mat4" state="PROJECTION_MATRIX" />
+	<param name="invV" type="mat4" state="VIEW_MATRIX" transform="INVERSE" />
+	<param name="color" type="vec4" state="COLOR" />
+	<param name="posTex" type="int" default="0" />
+	<param name="uv" type="vec2" state="TEXCOORD" />
+	<param name="eye" type="vec3" state="CAMERA_POSITION" />
+	<param name="nearClip" type="float" state="NEAR_CLIP" />
+	<param name="farClip" type="float" state="FAR_CLIP" />
+	<param name="random" type="vec3" state="NORMAL" />
+	<language name="glsl" version="1.5">
+		<bind param="MV" program="vp" />
+		<bind param="P" program="gp" />
+		<bind param="invV" program="gp" />
+		<bind param="color" program="vp" />
+		<bind param="posTex" program="vp" />
+		<bind param="uv" program="vp" />
+		<bind param="eye" program="fp" />
+		<bind param="nearClip" program="fp" />
+		<bind param="farClip" program="fp" />
+		<bind param="random" program="vp" />
+		<program name="vp" type="vertex">
+<![CDATA[
+#version 330 core
+uniform mat4 MV;
+uniform sampler2D posTex;
+in vec2 uv;
+in vec4 color;
+in vec3 random;
+
+out jit_PerVertex {
+	flat vec4 color;	
+	flat vec3 random;
+} jit_out;
+
+void main() {	
+	vec3	pos = texture(posTex, uv).xyz;
+	gl_Position = MV * vec4(pos, 1.);	
+	jit_out.color = vec4(pos, 1);
+	jit_out.random = random;
+}
+]]>
+		</program>
+		<program name="gp" vertices_out="4" input_type="lines_adjacency" output_type="triangle_strip" type="geometry">
+<![CDATA[
+#version 330 core
+#define size 0.04
+
+layout (points) in;
+layout (triangle_strip, max_vertices=4) out;
+
+uniform mat4 P, invV;
+
+in jit_PerVertex {
+	flat vec4 color;	
+	flat vec3 random;
+} jit_in[];
+
+out jit_PerVertex {
+	flat vec4 color;
+	smooth vec3 wPos;
+	flat vec3 center;	
+	flat float radius;
+	flat vec3 random;
+};
+
+void main() {
+
+	center = (invV * gl_in[0].gl_Position).xyz;
+	radius = size*0.5;
+	random = jit_in[0].random;
+	vec4 vPos;
+
+	vPos = (gl_in[0].gl_Position + vec4(-size, -size, 0., 0.));
+	gl_Position = P * vPos;
+	wPos = (invV * vPos).xyz;
+	color = jit_in[0].color;
+	EmitVertex();
+
+	vPos = (gl_in[0].gl_Position + vec4(+size, -size, 0., 0.));
+	gl_Position = P * vPos;
+	wPos = (invV * vPos).xyz;
+	color = jit_in[0].color;
+	EmitVertex();
+
+	vPos = (gl_in[0].gl_Position + vec4(-size, +size, 0., 0.));
+	gl_Position = P * vPos;
+	wPos = (invV * vPos).xyz;
+	color = jit_in[0].color;
+	EmitVertex();
+
+	vPos = (gl_in[0].gl_Position + vec4(+size, +size, 0., 0.));
+	gl_Position = P * vPos;
+	wPos = (invV * vPos).xyz;
+	color = jit_in[0].color;
+	EmitVertex();
+	
+	EndPrimitive();
+
+}
+]]>
+		</program>
+		<program name="fp" type="fragment">
+<![CDATA[
+#version 330 core
+
+uniform vec3 eye;
+uniform float nearClip, farClip;
+
+in jit_PerVertex {
+	flat vec4 color;
+	smooth vec3 wPos;
+	flat vec3 center;	
+	flat float radius;
+	flat vec3 random;
+} jit_in;
+
+out vec4 color;
+
+mat4 rotationAxisAngle( vec3 v, float angle )
+{
+    float s = sin( angle );
+    float c = cos( angle );
+    float ic = 1.0 - c;
+
+    return mat4( v.x*v.x*ic + c,     v.y*v.x*ic - s*v.z, v.z*v.x*ic + s*v.y, 0.0,
+                 v.x*v.y*ic + s*v.z, v.y*v.y*ic + c,     v.z*v.y*ic - s*v.x, 0.0,
+                 v.x*v.z*ic - s*v.y, v.y*v.z*ic + s*v.x, v.z*v.z*ic + c,     0.0,
+			     0.0,                0.0,                0.0,                1.0 );
+}
+
+mat4 translate( vec3 r)
+{
+    return mat4( 1.0, 0.0, 0.0, 0.0,
+				 0.0, 1.0, 0.0, 0.0,
+				 0.0, 0.0, 1.0, 0.0,
+				 r.x,   r.y,   r.z,   1.0 );
+}
+// axis aligned box centered at the origin, with size boxSize
+// http://iquilezles.org/www/articles/boxfunctions/boxfunctions.htm
+vec4 boxIntersection( in vec3 ro, in vec3 rd, in mat4 txx, in mat4 txi, in vec3 rad ) 
+{
+    // convert from ray to box space
+	vec3 rdd = (txx*vec4(rd,0.0)).xyz;
+	vec3 roo = (txx*vec4(ro,1.0)).xyz;
+
+	// ray-box intersection in box space
+    vec3 m = 1.0/rdd;
+    vec3 n = m*roo;
+    vec3 k = abs(m)*rad;
+	
+    vec3 t1 = -n - k;
+    vec3 t2 = -n + k;
+
+	float tN = max( max( t1.x, t1.y ), t1.z );
+	float tF = min( min( t2.x, t2.y ), t2.z );
+	
+	if( tN > tF || tF < 0.0) return vec4(-1);
+
+	vec3 nor = -sign(rdd)*step(t1.yzx,t1.xyz)*step(t1.zxy,t1.xyz);
+
+    // convert to ray space
+	
+	nor = (txi * vec4(nor,0.0)).xyz;
+
+	return vec4( nor, tN );
+}
+// sphere of size ra centered at point ce
+vec4 sphIntersect( in vec3 ro, in vec3 rd, in vec3 ce, float ra )
+{
+    vec3 oc = ro - ce;
+    float b = dot( oc, rd );
+    float c = dot( oc, oc ) - ra*ra;
+    float h = b*b - c;
+    if( h<0.0 ) return vec4(0., 0., 0., -1.0); // no intersection
+    h = sqrt( h );
+    float dist =  -b-h;
+    vec3 nor = ((ro + rd*dist) - ce)/ra;
+    return vec4(nor, dist);
+}
+
+
+vec2 OctWrap( vec2 v )
+{
+	float x = ( 1.0 - abs( v.y ) ) * ( v.x >= 0.0 ? 1.0 : -1.0 );
+	float y = ( 1.0 - abs( v.x ) ) * ( v.y >= 0.0 ? 1.0 : -1.0 );
+    return vec2(x, y);
+}
+ 
+vec2 Encode( vec3 n )
+{
+    n /= ( abs( n.x ) + abs( n.y ) + abs( n.z ) );
+    n.xy = n.z >= 0.0 ? n.xy : OctWrap( n.xy );
+    n.xy = n.xy * 0.5 + 0.5;
+    return n.xy;
+}
+void main() {
+
+	vec3 ro = eye;
+	vec3 rd = normalize(jit_in.wPos - eye);
+
+	mat4 tra = translate(-jit_in.center);
+	mat4 rot = rotationAxisAngle(normalize(jit_in.random), jit_in.random.y*100);
+	mat4 txx = rot * tra;
+	mat4 txi = inverse(txx);
+
+
+	vec3 ra = vec3(0.02, 0.1, 0.02)*jit_in.random.x;
+	vec4 box = boxIntersection(ro, rd, txx, txi, ra);
+	//vec4 sphere = sphIntersect(ro, rd, jit_in.center, jit_in.radius);
+
+	vec4 closest = box;
+	if(closest.w == -1.){discard;}
+
+	float dist = (closest.w - nearClip) / (farClip - nearClip);
+	gl_FragDepth = dist;
+	vec2 encodedNor = Encode(closest.xyz);
+	float id = jit_in.random.x;
+	color = vec4(encodedNor, id, dist);
+}	
+]]>
+		</program>
+	</language>
+</jittershader>

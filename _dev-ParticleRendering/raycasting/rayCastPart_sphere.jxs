@@ -1,0 +1,160 @@
+<jittershader name="fill-flat-quads">
+	<description>Default Shader </description>
+	
+	<param name="MV" type="mat4" state="MODELVIEW_MATRIX" />
+	<param name="P" type="mat4" state="PROJECTION_MATRIX" />
+	<param name="eye" type="vec3" state="CAMERA_POSITION" />
+	<param name="invV" type="mat4" state="VIEW_MATRIX" transform="INVERSE" />
+	<param name="color" type="vec4" state="COLOR" />
+	<param name="posTex" type="int" default="0" />
+	<param name="size" type="float" default="0.05" />
+	<param name="uv" type="vec2" state="TEXCOORD" />
+<param name="nearclip" type="float" state="NEAR_CLIP" />
+<param name="farclip" type="float" state="FAR_CLIP" />
+	<language name="glsl" version="1.5">
+	
+		<bind param="MV" program="vp" />
+		<bind param="P" program="gp" />
+		<bind param="posTex" program="vp" />
+		<bind param="color" program="vp" />
+		<bind param="uv" program="vp" />
+		<bind param="eye" program="fp" />
+		<bind param="invV" program="gp" />
+		<bind param="nearclip" program="fp" />
+		<bind param="farclip" program="fp" />
+		<bind param="size" program="gp" />
+
+		<program name="vp" type="vertex">
+<![CDATA[
+#version 330 core
+
+uniform mat4 MV;
+uniform sampler2D posTex;
+
+in vec2 uv;
+in vec4 color;
+
+out jit_PerVertex {
+	flat vec4 color;	
+} jit_out;
+
+void main() {	
+	vec3 pos = texture(posTex, uv).xyz;
+	gl_Position = MV * vec4(pos, 1.0);	
+	jit_out.color = vec4(pos,1.0);
+}
+]]>
+		</program>
+		<program name="gp" vertices_out="4" input_type="lines_adjacency" output_type="triangle_strip" type="geometry">
+<![CDATA[
+#version 330 core
+
+
+layout (points) in;
+layout (triangle_strip, max_vertices=4) out;
+
+in jit_PerVertex {
+	flat vec4 color;	
+} jit_in[];
+
+out jit_PerVertex {
+	flat vec4 color;	
+	smooth vec3 wPos;
+	flat vec3 center;
+	flat float radius;
+};
+
+
+uniform mat4 P, invV;
+uniform float size;
+
+void main() {
+
+	center = (invV * gl_in[0].gl_Position).xyz;
+	radius  = size * 0.5;
+	vec4 vPos;
+
+	vPos = (gl_in[0].gl_Position + vec4(-size,-size,0.,0.));
+	gl_Position = P * vPos;
+	wPos = (invV * vPos).xyz;
+	color = jit_in[0].color;
+	EmitVertex();
+
+	vPos = (gl_in[0].gl_Position + vec4(-size,+size,0.,0.));
+	gl_Position = P * vPos;
+	wPos = (invV * vPos).xyz;
+	color = jit_in[0].color;
+	EmitVertex();
+
+	vPos = (gl_in[0].gl_Position + vec4(+size,-size,0.,0.));
+	gl_Position = P * vPos;
+	wPos = (invV * vPos).xyz;
+	color = jit_in[0].color;
+	EmitVertex();
+
+	vPos = (gl_in[0].gl_Position + vec4(+size,+size,0.,0.));
+	gl_Position = P * vPos;
+	wPos = (invV * vPos).xyz;
+	color = jit_in[0].color;
+	EmitVertex();
+	
+
+	
+	EndPrimitive();
+}
+]]>
+		</program>
+		<program name="fp" type="fragment">
+<![CDATA[
+#version 330 core
+uniform vec3 eye;
+uniform float nearclip;
+uniform float farclip;
+
+in jit_PerVertex {
+	flat vec4 color;
+	smooth vec3 wPos;
+	flat vec3 center;
+	flat float radius;
+} jit_in;
+
+out vec4 color;
+
+// sphere of size ra centered at point ce
+vec4 sphIntersect( in vec3 ro, in vec3 rd, in vec3 ce, float ra )
+{
+    vec3 oc = ro - ce;
+    float b = dot( oc, rd );
+    float c = dot( oc, oc ) - ra*ra;
+    float h = b*b - c;
+    if( h<0.0 ) return vec4(0.,0.,0.,-1.0); // no intersection
+    h = sqrt( h );
+	float dist = -b-h;
+	vec3 nor = ((ro + rd*dist) - ce)/ra;
+    return vec4(nor, dist);
+}
+
+
+
+void main() {
+	vec3 ro = eye;
+	vec3 rd = normalize(jit_in.wPos - eye);
+
+	vec4 sphere = sphIntersect(ro, rd, jit_in.center, jit_in.radius);
+	if (sphere.w == -1.0) { discard; }
+	float dist = (sphere.w - nearclip) / (farclip - nearclip);
+
+	// to draw the particles like volumetric objects >> spheres
+	// we use the gl variable gl_FragDepth
+	// we then can see the intersections of spheres. they look now like spheres, not like intersections of disc's
+	// the dist contains the volumetric information becauase its made for spheres!
+	// video @ 50min
+	gl_FragDepth = dist;
+	color = vec4(sphere.xyz,dist);
+	//color = jit_in.color;
+	//color *= vec4(vec3(dist),1.0);
+}	
+]]>
+		</program>
+	</language>
+</jittershader>

@@ -1,0 +1,181 @@
+<jittershader name="fill-flat-quads">
+	<description>Default Shader </description>
+
+	// VIDEO: https://www.patreon.com/posts/tutorial-25-cool-55999137
+
+	<param name="MV" type="mat4" state="MODELVIEW_MATRIX" />
+	<param name="P" type="mat4" state="PROJECTION_MATRIX" />
+	<param name="color" type="vec4" state="COLOR" />
+	<param name="texcoord" type="vec2" state="TEXCOORD" />
+	<param name="nearClip" type="float" state="NEAR_CLIP" />
+	<param name="farClip" type="float" state="FAR_CLIP" />
+
+	// these are the 2 slices of posTex
+	<param name="posTex" type="int" default="0" />
+	<param name="currentIndex" type="float" default="0.0" />
+	<param name="prevIndex" type="float" default="1.0" />
+
+	// uniforms
+	<param name="focus" type="float" default="0.01" />
+	<param name="blurAmt" type="float" default="700." />
+	<param name="size" type="float" default="0.005" />
+
+	<language name="glsl" version="1.5">
+		<bind param="MV" program="vp" />
+		<bind param="P" program="gp" />
+		<bind param="color" program="vp" />
+		<bind param="posTex" program="vp" />
+		<bind param="texcoord" program="vp" />
+		<bind param="nearClip" program="gp" />
+		<bind param="farClip" program="gp" />
+		// these are the 2 slices of posTex
+		<bind param="currentIndex" program="vp" />
+		<bind param="prevIndex" program="vp" />
+		<bind param="size" program="gp" />
+		<bind param="blurAmt" program="gp" />
+		<bind param="focus" program="gp" />
+
+		<program name="vp" type="vertex">
+<![CDATA[
+#version 330 core
+uniform mat4 MV;
+uniform sampler3D posTex;
+uniform float currentIndex;
+uniform float prevIndex;
+in vec4 color;
+in vec2 texcoord;
+
+out jit_PerVertex {
+	smooth vec4 color;
+	smooth vec4 prevPos;	
+} jit_out;
+
+void main() {	
+	gl_Position = MV * texture(posTex,vec3(texcoord,currentIndex));	
+	jit_out.prevPos = MV * texture(posTex,vec3(texcoord,prevIndex));	
+	jit_out.color = color;
+}
+]]>
+		</program>
+		<program name="gp" vertices_out="4" input_type="points" output_type="triangle_strip" type="geometry">
+<![CDATA[
+#version 330 core
+
+uniform mat4 P;
+uniform float nearClip;
+uniform float farClip;
+uniform float size;
+uniform float blurAmt;
+uniform float focus;
+
+layout (points) in;
+layout (triangle_strip, max_vertices=4) out;
+
+in jit_PerVertex {
+	smooth vec4 color;
+	smooth vec4 prevPos;
+} jit_in[];
+
+out jit_PerVertex {
+	smooth vec4 color;
+	smooth vec2 corner;	
+};
+
+// this function gives us the square around the points, which orients to the angle between prev and current pos
+// this is helpful for creating interframe lines with a shader !!!!
+
+vec4 rotate( vec2 point, float cosine, float sine) {
+
+	return vec4(	point.x * cosine - point.y * sine,
+					point.x * sine + point.y * cosine,
+					0.0,0.0 );
+}
+
+void main() {
+
+	
+	vec4 currPos = gl_in[0].gl_Position;
+	vec4 prevPos = jit_in[0].prevPos;
+	// now we can calculate the angle between the first and second position
+	float angle = atan(prevPos.x - currPos.x, currPos.y - prevPos.y);
+	float shiftx = cos(angle);
+	float shifty = sin(angle);
+
+	// we calculate depth to get a value for depthblur
+	float currDepth = ((P * currPos).z - nearClip) / (farClip - nearClip);
+	float prevDepth = ((P * prevPos).z - nearClip) / (farClip - nearClip);
+
+	// check the video at 1.05 to get this
+	currDepth -= focus;
+	prevDepth -= focus;
+	currDepth = abs(currDepth);
+	prevDepth = abs(prevDepth);
+	currDepth *= blurAmt; // blur amount
+	prevDepth *= blurAmt; // blur amount
+	currDepth += 1.; // avoid dividing by 0
+	prevDepth += 1.; // avoid dividing by 0
+	currDepth = 1.0 / currDepth;
+	prevDepth = 1.0 / prevDepth;
+
+	// now we calculate the size depending on depth
+	// so we draw near and far object bigger. focused objects are normal sized
+
+	float finalSizeCurr = size / currDepth;
+	float finalSizePrev = size / prevDepth;
+
+
+	// we draw one point and add 4 points around to create a square with a certain size
+	// TopLeft, TopRight, BottomLeft, BottomRight
+
+	gl_Position = P * (prevPos + rotate(vec2(-finalSizePrev,-finalSizePrev),shiftx,shifty));
+	color = vec4(jit_in[0].color.rgb, jit_in[0].color.a * prevDepth);
+	corner = vec2(-1,-1);
+	EmitVertex();
+
+	gl_Position = P * (prevPos + rotate(vec2(finalSizePrev,-finalSizePrev),shiftx,shifty));
+	color = vec4(jit_in[0].color.rgb, jit_in[0].color.a * prevDepth);
+	corner = vec2(1,-1);
+	EmitVertex();
+
+	gl_Position = P * (currPos + rotate(vec2(-finalSizeCurr,finalSizeCurr),shiftx,shifty));
+	color = vec4(jit_in[0].color.rgb, jit_in[0].color.a * currDepth);
+	corner = vec2(-1,1);
+	EmitVertex();
+
+	gl_Position = P * (currPos + rotate(vec2(finalSizeCurr,finalSizeCurr),shiftx,shifty));
+	color = vec4(jit_in[0].color.rgb, jit_in[0].color.a * currDepth);
+	corner = vec2(1,1);
+	EmitVertex();
+	
+	EndPrimitive();
+}
+]]>
+		</program>
+		<program name="fp" type="fragment">
+<![CDATA[
+#version 330 core
+
+in jit_PerVertex {
+	smooth vec4 color;
+	smooth vec2 corner;
+} jit_in;
+
+out vec4 color;
+
+void main() {
+
+		float distance = length(jit_in.corner);
+	if(distance > 1.){
+		discard;
+	} else {
+		distance = 1. - distance;
+		distance *= 1.5;
+		distance = smoothstep(0., 1., distance);
+		color = jit_in.color;
+		color.a *= distance;
+	}
+}	
+]]>
+		</program>
+	</language>
+</jittershader>

@@ -1,0 +1,122 @@
+<jittershader name="fill-flat-quads">
+	<description>Default Shader </description>
+	<param name="position" type="vec3" state="POSITION" />
+	
+	<param name="MV" type="mat4" state="MODELVIEW_MATRIX" />
+	<param name="P" type="mat4" state="PROJECTION_MATRIX" />
+	<param name="color" type="vec4" state="COLOR" />
+	<language name="glsl" version="1.5">
+		<bind param="position" program="vp" />
+		
+		<bind param="MV" program="vp" />
+		<bind param="P" program="gp" />
+		<bind param="color" program="vp" />
+		<program name="vp" type="vertex">
+<![CDATA[
+#version 330 core
+uniform mat4 MV;
+in vec3 position;
+in vec4 color;
+
+out jit_PerVertex {
+	flat vec4 color;	
+} jit_out;
+
+void main() {	
+	gl_Position = MV * vec4(position, 1.);	
+	jit_out.color = color;
+}
+]]>
+		</program>
+		<program name="gp" vertices_out="4" input_type="lines_adjacency" output_type="triangle_strip" type="geometry">
+<![CDATA[
+#version 330 core
+
+uniform mat4 P;
+
+layout (points) in;
+layout (triangle_strip, max_vertices=4) out;
+
+in jit_PerVertex {
+	flat vec4 color;	
+} jit_in[];
+
+out jit_PerVertex {
+	smooth vec4 color;
+	smooth vec2 corner;	
+};
+
+void main() {
+
+	float size = 0.01;
+
+	// we draw one point and add 4 points around to create a square with a certain size
+	// TopLeft, TopRight, BottomLeft, BottomRight
+
+	gl_Position = P * (gl_in[0].gl_Position + vec4(-size,-size,0.,0.));
+	color = jit_in[0].color;
+	corner = vec2(-1,-1);
+	EmitVertex();
+
+	gl_Position = P * (gl_in[0].gl_Position + vec4(size,-size,0.,0.));
+	color = jit_in[0].color;
+	corner = vec2(1,-1);
+	EmitVertex();
+
+	gl_Position = P * (gl_in[0].gl_Position + vec4(-size,size,0.,0.));
+	color = jit_in[0].color;
+	corner = vec2(-1,1);
+	EmitVertex();
+
+	gl_Position = P * (gl_in[0].gl_Position + vec4(size,size,0.,0.));
+	color = jit_in[0].color;
+	corner = vec2(1,1);
+	EmitVertex();
+	
+	EndPrimitive();
+}
+]]>
+		</program>
+		<program name="fp" type="fragment">
+<![CDATA[
+#version 330 core
+
+in jit_PerVertex {
+	smooth vec4 color;
+	smooth vec2 corner;
+} jit_in;
+
+out vec4 color;
+
+void main() {
+
+	// to compute the distance from corners to center we use the following
+	// the center is the origin which is always 0,0,0;
+
+	float distance = length(jit_in.corner);
+	if (distance > 1.0) {
+		discard;
+	} else {
+
+		color = jit_in.color;
+
+		// to avoid aliasing we subtract the inverted distance as alpha channel instead of 1.0
+		// color.a = 1.0; 
+		color.a = (1.0 - distance);
+
+		// to make the gradient only a the last area of the point we can use the following
+		color.a *= 4.0;
+
+		// to improve the border furhter we can add a smoothstep function;
+		color.a = smoothstep(0.0,1.0,color.a);
+
+
+	}
+
+	// to visualize corners we can use the following 
+	// color = vec4(jit_in.corner.x,jit_in.corner.x,jit_in.corner.x,1.0);
+}	
+]]>
+		</program>
+	</language>
+</jittershader>

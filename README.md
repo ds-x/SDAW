@@ -20,7 +20,7 @@ This makes it possible to changes and adapt scenes dynamically with the OSC Sequ
 ### dsx.model
 - a custom module to read and display 3D Model Files. To visualize 3D modules in complex scenes, together with text or data sources, we developed this module. It uses different render techniques, like points, lines or triangles to draw the modules. additionally it possible to change size, rotation or positiion. 
 - a integrated material editor can be used to change and overwrite the default material of the 3D file.
-- animated 3D Files, like sequences caured with ROKOKO MoCap suite, can be played and manipulated.
+- animated 3D Files, like sequences captured with ROKOKO MoCap suite, can be played and manipulated.
 
 ### dsx.models
 - a custom module that is based on dsx.module, except it can produces multiple copies of the 3D file with different behaviours. It has the same features like dsx.model and extends this functionality to every copy. so we can display a group of dancers, flowers or stones. This "cloud" of models can be animated based on a noise, sound or other data sources. 

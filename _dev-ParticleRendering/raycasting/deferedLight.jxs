@@ -1,0 +1,195 @@
+<jittershader name="default">
+	<description>Default Slab </description>
+	
+	<param name="norTex" type="int" default="0" />
+	<param name="posTex" type="int" default="1" />
+	<param name="oclTex" type="int" default="2" />
+	<param name="MVP" type="mat4" state="MODELVIEW_PROJECTION_MATRIX" />
+	<param name="textureMatrix0" type="mat4" state="TEXTURE0_MATRIX" />
+	<param name="position" type="vec3" state="POSITION" />
+	<param name="texcoord" type="vec2" state="TEXCOORD" />
+	<param name="color" type="vec4" state="COLOR" />
+	<param name="eye" type="vec3" state="CAMERA_POSITION" />
+	<param name="invV" type="mat4" state="VIEW_MATRIX" transform="INVERSE" />
+	<param name="farclip" type="float" state="FAR_CLIP" />
+	<param name="bgcolor" type="vec3" default="0. 0. 0." />
+	<language name="glsl" version="1.5">
+		
+		<bind param="norTex" program="fp" />
+		<bind param="MVP" program="vp" />
+		<bind param="textureMatrix0" program="vp" />
+		<bind param="position" program="vp" />
+		<bind param="texcoord" program="vp" />
+		<bind param="color" program="vp" />
+		<bind param="eye" program="fp" />
+		<bind param="invV" program="fp" />
+		<bind param="posTex" program="fp" />
+		<bind param="oclTex" program="fp" />
+		<bind param="farclip" program="fp" />
+		<bind param="bgcolor" program="fp" />
+		<program name="vp" type="vertex"  >
+		<![CDATA[
+			#version 330 core
+			
+			in vec3 position;
+			in vec2 texcoord;
+			in vec4 color;
+			out jit_PerVertex {
+				vec2 texcoord;
+				vec4 color;
+			} jit_out;
+			uniform mat4 MVP;
+			uniform mat4 textureMatrix0;
+			
+			void main(void) {
+				gl_Position = MVP*vec4(position, 1.);
+				jit_out.texcoord = vec2(textureMatrix0*vec4(texcoord, 0., 1.));
+				jit_out.color = color;
+			}
+		]]>
+		</program>
+		
+		<program name="fp" type="fragment"  >
+		<![CDATA[
+			#version 330 core
+			
+			in jit_PerVertex {
+				vec2 texcoord;
+				vec4 color;
+			} jit_in;
+			layout (location = 0) out vec4 outColor;
+			
+			uniform sampler2DRect norTex, posTex, oclTex;
+			uniform mat4 invV;
+			uniform vec3 eye;
+			uniform float farclip;
+			uniform vec3 bgcolor;
+
+			vec3 Decode( vec2 f )
+				{
+					f = f * 2.0 - 1.0;
+				
+					// https://twitter.com/Stubbesaurus/status/937994790553227264
+					vec3 n = vec3( f.x, f.y, 1.0 - abs( f.x ) - abs( f.y ) );
+					float t = clamp( -n.z, 0., 1. );
+					n.x += n.x >= 0.0 ? -t : t;
+					n.y += n.y >= 0.0 ? -t : t;
+					return normalize( n );
+				}
+
+
+
+			void main(void) {
+
+				vec4 lookup = texture(norTex, jit_in.texcoord);	
+				// lookup.w corresponds to depth
+
+				//if(lookup.w == 0.) { discard;}
+						
+				vec4 vPos = texture(posTex, jit_in.texcoord);
+				vec3 wPos = (invV * vPos).xyz;
+
+				vec3 nor = Decode(lookup.xy);
+				float id = lookup.z;
+				float depth = lookup.w;
+
+				// Albedo = Base Color
+				vec3 albedo = vec3(sin(id*2346.)*0.5+0.5);
+				vec3 color = vec3(0.);
+
+				vec3 V = normalize(wPos  - eye);
+				vec3 R = reflect(V,nor);
+
+				// kD == 1 means no reflections
+				// kD == 0.1 less diffuse
+				float kD = 0.91;
+				float kS = 1-kD;
+
+
+				{	// LIGHT 1
+					// Light from ABOVE
+					vec3 lightPos = normalize(vec3(0.0,1.0,0.0));
+					vec3 lightCol = vec3(1.0,1.0,1.0);
+
+					// DIFFUSE LIGHT
+					float diffCol = max(0.0, dot(lightPos,nor));
+
+					// resulting Light
+					color += diffCol * lightCol * albedo;
+
+					// Specular Light = Reflection
+					float specCol = max(0.,dot(R,lightPos));
+					specCol = pow(specCol,100);
+					color += specCol * lightCol * albedo * kS;
+
+				}
+
+				{	// LIGHT 2
+					// Light from LEFT
+					vec3 lightPos = normalize(vec3(-1.0,1.0,0.0));
+					vec3 lightCol = vec3(0.1,0.2,0.71);
+
+					// DIFFUSE LIGHT
+					float diffCol = max(0.0, dot(lightPos,nor));
+
+					// resulting Diffuse Light
+					color += diffCol * lightCol * albedo * kD;
+
+					// Specular Light = Reflection
+					float specCol = max(0.,dot(R,lightPos));
+					specCol = pow(specCol,100);
+					color += specCol * lightCol * albedo * kS;
+				}
+
+				{	// LIGHT 3
+					// Light from RIGHT
+					vec3 lightPos = normalize(vec3(1.0,1.0,0.0));
+					vec3 lightCol = vec3(1.0,0.7,0.1);
+
+					// DIFFUSE LIGHT
+					float diffCol = max(0.0, dot(lightPos,nor));
+
+					// resulting Light
+					color += diffCol * lightCol * albedo * kD;
+
+					// Specular Ligtht = Reflection
+					float specCol = max(0.,dot(R,lightPos));
+					specCol = pow(specCol,100);
+					color += specCol * lightCol * albedo * kS;
+				}
+
+				
+			// Finally we add Ambient Light together with Ambient Occlusion.
+			// AO defines the space where no ambient light comes in
+			vec3 ambLight = vec3(0.75);
+
+			
+		
+			float ocl = texture(oclTex, jit_in.texcoord).r;
+			color += ambLight * ocl * albedo;
+			//color = vec3(ocl);	
+			if(ocl == 1. && depth == 0.)  {color = bgcolor;}	
+
+
+			// FOG Function
+			//float fogamount = 1.0 - exp(-depth*1.85);
+   			color.rgb = mix(color.rgb,bgcolor,depth*depth*depth);
+
+
+			// TONE MAPPING
+			color /= color + 1.0;
+
+			// GAMMA CORRECTION
+			// pow(color, 1/2.2);
+			color = pow(color, vec3(0.4545454545));
+	
+	
+			outColor.rgb = color;
+			outColor.a = 1.0;
+
+
+			}
+		]]>
+		</program>
+	</language>
+</jittershader>

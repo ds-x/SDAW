@@ -1,0 +1,304 @@
+<jittershader name="default">
+<description>Default Slab </description>
+<param name="modelViewProjectionMatrix" type="mat4" state="MODELVIEW_PROJECTION_MATRIX" />
+<param name="position" type="vec3" state="POSITION" />
+<param name="texcoord" type="vec2" state="TEXCOORD" />
+<param name="camPos" type="vec3" state="CAMERA_POSITION" />
+<param name="farclip" type="float" state="FAR_CLIP" />
+<param name="nearclip" type="float" state="NEAR_CLIP" />
+<param name="count" type="int" default="1" />
+<param name="lightPos" type="vec3" default="0.1 3. -2." />
+<param name="posTex" type="int" default="0" />
+<param name="noiseTex" type="int" default="1" />
+<param name="checkSteps" type="bool" default="FALSE" />
+<param name="roundness" type="float" default="0" />
+<param name="morph" type="float" default="0.5" />
+<param name="reflection" type="float" default="100" />
+<param name="lightIntensity" type="float" default="0.3" />
+<param name="ambientlight" type="vec3" default="0. 0. 0." />
+<param name="bgcol" type="vec3" default="0. 0. 0." />
+<param name="size" type="float" default="1." />
+
+// viewport contains the rendering dimension of the rendering window!!
+<param name="viewport" type="vec2" state="VIEWPORT" />
+<language name="glsl" version="1.5">
+<bind param="modelViewProjectionMatrix" program="vp" />
+<bind param="position" program="vp" />
+<bind param="texcoord" program="vp" />
+<bind param="viewport" program="vp" />
+<bind param="lightPos" program="fp" />
+<bind param="posTex" program="fp" />
+<bind param="noiseTex" program="fp" />
+<bind param="count" program="fp" />
+<bind param="checkSteps" program="fp" />
+<bind param="camPos" program="fp" />
+<bind param="farclip" program="fp" />
+<bind param="nearclip" program="fp" />
+<bind param="roundness" program="fp" />
+<bind param="morph" program="fp" />
+<bind param="reflection" program="fp" />
+<bind param="lightIntensity" program="fp" />
+<bind param="ambientlight" program="fp" />
+<bind param="bgcol" program="fp" />
+<bind param="size" program="fp" />
+
+<include source="sdf_composite.glsl" program="fp" />
+<include source="sdf_shapes.glsl" program="fp" />
+<include source="noisefunctions.glsl" program="fp" />
+
+<program name="vp" type="vertex"  >
+<![CDATA[
+	#version 330 core
+	
+	in vec3 position;
+	in vec2 texcoord;
+	uniform vec2 viewport;
+
+	out jit_PerVertex {
+		vec2 texcoord;
+	} jit_out;
+	uniform mat4 modelViewProjectionMatrix;
+	
+	void main(void) {
+		gl_Position = modelViewProjectionMatrix*vec4(position, 1.);
+		float aspectRatio = 1280.0 / 720.0; // viewport.x / viewport.y;
+		jit_out.texcoord = texcoord - 0.5;
+		jit_out.texcoord.x *= aspectRatio;
+	}
+]]>
+</program>
+		
+<program name="fp" type="fragment"  >
+<![CDATA[
+	#version 330 core
+	#define MAX_STEPS 300
+    #define MIN_DIST 0.0001
+
+	in jit_PerVertex {
+		vec2 texcoord;
+	} jit_in;
+	layout (location = 0) out vec4 outColor;
+
+	uniform vec3 lightPos;
+	uniform sampler2DRect posTex;
+    uniform sampler2D noiseTex;
+    uniform bool checkSteps;
+    uniform vec3 camPos;
+    uniform float roundness;
+    uniform float morph;
+    uniform float reflection;
+    uniform vec3 ambientlight;
+    uniform float lightIntensity;
+    uniform float farclip;
+    uniform float nearclip;
+    uniform vec3 bgcol;
+    uniform int count;
+    uniform float size;
+
+// Minimum Function with color component
+vec4 getMinCol(vec4 a, vec4 b) {
+    return (a.w < b.w) ? a : b;
+}
+
+// Smooth minimum function with color component
+vec4 getSminCol( vec4 a, vec4 b, float k) {
+    float h = max( k - abs(a.w-b.w),0.0)/k;
+    float m = h*h*h*0.5;
+    float s = m*k*(1.0/3.0);
+    return (a.w<b.w) ? vec4(mix(a.rgb,b.rgb,m), a.w-s) : vec4(mix(b.rgb,a.rgb,m), b.w-s);
+}
+
+vec4 getDist(vec3 pos) {
+
+    float closest = 100000.;
+    float spheres= 100000.;
+    float dist;
+    float dist2;
+    float disp; 
+    float morp;
+    float radius = 1;
+    vec3  center;
+    //float npos = noise(vec3(3.0));
+
+    vec3 colPlane = vec3(0.3);
+    vec3 colBase = vec3(0.0,1.0,0.0);
+    vec3 colSphere = vec3(0.83,0.2,0.9);
+
+
+
+    // abstand
+    vec3 c = vec3(3.,0., 3.) ;
+   
+    // repetitions
+    vec3 l = vec3(1.,0,1.);
+    // pos
+    vec3 q = pos-c*clamp(round(pos/c),-l,l) ;
+   
+
+    for(int i = 0; i < count; i++) {
+
+        // this is the position and the coming from external noise
+        center 	= texture(posTex, vec2(i, 0.)).rgb;
+        radius  = texture(posTex, vec2(i, 0.)).a;
+        dist = sdfSphere(pos,center, radius); 
+        // this calculates the Distances from RO to SDF Spheres
+        //dist    = vec4(colSphere, sdfSphere(pos,center,radius));
+        spheres = smin(spheres,dist,morph);
+    }
+            
+    //disp = size * sin(20*pos.x)*sin(20*pos.y)*sin(20*pos.z);
+    
+    
+    vec4 plane = vec4(colPlane,sdfPlane(pos, vec3(0, 1., 0.), 0.));
+    vec4 base = vec4(colBase, sdfBox2(q,vec3(0.0,-2.25,0.0),vec3(0.05,4.5,0.05)) - roundness);
+    vec4 comb_base = getSminCol(plane,base,0.25);
+    
+    vec4 comb_scene = getSminCol(comb_base, vec4(colSphere,spheres),size);
+    //return comb_base;
+    return comb_scene;
+}
+
+vec4 map(vec3 ro, vec3 rd) {
+    
+    float currDist = nearclip;
+    float dist = 0.;
+
+    vec3 pos;
+    vec4 scene;
+    
+
+    for(int i=0; i < MAX_STEPS; i++){
+        pos = ro + rd * currDist;
+        scene = getDist(pos);
+        dist = scene.w;
+        currDist += dist;
+        if (dist < MIN_DIST || currDist > farclip ) {
+            break;
+        }
+    }
+    
+    return vec4(vec3(scene.rgb),currDist);
+
+}
+
+    // ::::::::::::::::::::::::::::::::::: CALCULALTE NORMALS
+
+vec3 getNorm(vec3 hitPos) {
+
+    vec2 eps = vec2(0.00001,0.0);
+    // to get more precice results we need to subtract with the same function but instead of add Epsilon we subtract
+    float shiftx = getDist(hitPos + eps.xyy).w - getDist(hitPos - eps.xyy).w;
+    float shifty = getDist(hitPos + eps.yxy).w - getDist(hitPos - eps.yxy).w;
+    float shiftz = getDist(hitPos + eps.yyx).w - getDist(hitPos - eps.yyx).w;
+
+    return normalize(vec3(shiftx,shifty,shiftz));
+}
+
+
+// ::::::::::::::::::::::::::::::::::: AMBIENT OCCLUSION
+// check Video 3 at 30min
+float getAO(vec3 hitPos, vec3 nor) {
+    float occ = 0.;
+    float scale = 1.;
+    for (int i = 0; i<15;i++) {
+        // h = height, 0.01 = offset, 0.12 = scale the height
+        float h = 0.01 + 0.12 * float(i)/15; 
+        float d = getDist(hitPos + nor * h).w;
+        occ += (h-d)*scale;
+        scale *= 0.25;
+    }
+    return clamp(1. - 5.*occ,0.,1.);
+
+}
+
+// ::::::::::::::::::::::::::::::::::: LIGHT MODEL
+
+vec3 getLight(vec3 hitPos, vec3 rd) {
+    vec3 normals = getNorm(hitPos);
+    vec3 lightdir = normalize(hitPos - lightPos);
+
+    // DIFFUSE LIGHT
+    float direct = max(-dot(lightdir, normals), 0.);
+
+    // REFLECTED LIGHT
+    vec3 refRd = reflect(rd, normals);
+    float reflected = max(-dot(lightdir, refRd), 0.0);
+    reflected = pow(reflected,reflection);
+
+    // AMBIENT LIGHT
+    vec3 ambient = ambientlight;
+    float occ = getAO(hitPos, normals);
+    vec3 col = vec3((reflected + direct) * lightIntensity + ambient * occ);
+
+    return col;
+}
+
+// ::::::::::::::::::::::::::::::::::: CAMERA
+// check the video Raymarching2 at minute 22!!
+// camera rotation matrix... ?
+
+mat3 getCameraMatrix(vec3 ro, vec3 target) {
+    vec3 a = normalize(target-ro);
+    vec3 b = cross(a, vec3(0.,1.,0.));
+    vec3 c = cross(b, a);
+    return mat3(b,c,a);
+}
+
+void main(void) 
+{
+    float radius = 0.01;
+
+
+    // this is ray origin f.e. a camera
+    vec3 ro = camPos; 
+    vec3 ta = vec3(0.); // camera target
+    mat3 camMat = getCameraMatrix(ro,ta);
+
+    // the imaginary plane (screen) in front of the camera
+    float planeDist = 0.6;
+    vec3 rd = normalize(camMat * vec3(jit_in.texcoord, planeDist));
+
+    // cast a ray in the world and retrieve the distance to the hit point
+    vec4 scene = map(ro,rd);
+    vec3 material = scene.rgb;
+    float dist = scene.w;
+    
+    vec3 col;
+    
+
+    if (dist > farclip) 
+    {
+        col = bgcol;
+
+    } else {
+    
+        vec3 hitPos = ro + rd * dist;
+
+        col = getLight(hitPos,rd) * material;
+        
+    }
+
+
+
+        // FOG Function
+    col = mix(col.rgb,bgcol,vec3(dist / farclip));
+
+        
+    // TONE MAPPING
+    col /= col + 1.0;
+
+
+    // correct the GAMMA - linear color to sRGB (screen RGB)
+    //col = pow(col, vec3(0.4545454545));
+
+
+
+    //outColor = vec4(jit_in.texcoord,0.,1.);
+    
+    outColor = vec4(col,1.0);
+        
+}
+]]>
+</program>
+</language>
+</jittershader>
